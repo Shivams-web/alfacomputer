@@ -118,7 +118,7 @@ export default function AdminDashboard() {
 
   // Live Class modifier binders
   const [liveTitle, setLiveTitle] = useState("");
-  const [liveUrl, setLiveUrl] = useState("https://www.youtube.com/embed/sample-ccc-lecture");
+  const [liveUrl, setLiveUrl] = useState("https://www.w3schools.com/html/mov_bbb.mp4");
   
   // Status reporting
   const [statusMsg, setStatusMsg] = useState("");
