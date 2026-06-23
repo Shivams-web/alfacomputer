@@ -1,0 +1,8 @@
+{
+  "name": "Remix: The Curious Alfa Tech Computer Institute",
+  "description": "Premium EdTech application for The Curious Alfa Tech Computer Institute featuring Student and Admin dashboards, CCC practice tests with interactive timers, live classes, student performance analytics, and instant notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

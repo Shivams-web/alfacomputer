@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student or Admin profile containing role-based authorization details and custom bio info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user credentials identifier from Firebase Auth" },
+        "email": { "type": "string", "format": "email", "description": "Verified user email address" },
+        "name": { "type": "string", "description": "Full name of the student or administrator" },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "Access control role assigned to user" },
+        "photoURL": { "type": "string", "description": "Profile picture URL for the student or admin" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Record update timestamp" }
+      },
+      "required": ["uid", "email", "name", "role", "createdAt", "updatedAt"]
+    },
+    "Test": {
+      "title": "Test",
+      "description": "Metadata regarding computer certificates preparation assessments like CCC test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID of this trial assessment" },
+        "title": { "type": "string", "description": "Title name (e.g. CCC Practice Test 01)" },
+        "description": { "type": "string", "description": "High level goals and guidelines" },
+        "timeLimit": { "type": "integer", "description": "Allocated timer per question, default is 10" },
+        "questionsCount": { "type": "integer", "description": "Total count of multiple choice questions included" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "title", "description", "timeLimit", "questionsCount", "createdAt", "updatedAt"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Individual question structure for a mock practice test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document ID or index of this question" },
+        "question": { "type": "string", "description": "Content of the computer assessment question" },
+        "options": { "type": "array", "description": "Four options for multiple choice answers" },
+        "correctAnswer": { "type": "string", "description": "Strictly matching string of correct option" }
+      },
+      "required": ["id", "question", "options", "correctAnswer"]
+    },
+    "Result": {
+      "title": "Result",
+      "description": "Completed quiz attempt metadata indicating student grades and scores summary",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Auto-incrementing or unique test attempt ID" },
+        "studentId": { "type": "string", "description": "ID of the student completing the test" },
+        "studentName": { "type": "string", "description": "Full display name of the student" },
+        "studentEmail": { "type": "string", "format": "email", "description": "Target email of student" },
+        "testId": { "type": "string", "description": "Reference ID to corresponding Test object" },
+        "testName": { "type": "string", "description": "Name of the mock assessment" },
+        "correctCount": { "type": "integer", "description": "Total correct calculations" },
+        "wrongCount": { "type": "integer", "description": "Total incorrect calculations" },
+        "skippedCount": { "type": "integer", "description": "Total unattended questions" },
+        "percentage": { "type": "number", "description": "Correct questions to total questions ratio" },
+        "timeTaken": { "type": "integer", "description": "Total completed duration in seconds" },
+        "performanceStatus": { "type": "string", "description": "Qualitative grade indicator" },
+        "motivationalMessage": { "type": "string", "description": "Customized motivational tip based on percentage" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Test submission timestamp" }
+      },
+      "required": [
+        "id", "studentId", "studentName", "studentEmail", "testId",
+        "testName", "correctCount", "wrongCount", "skippedCount",
+        "percentage", "timeTaken", "performanceStatus", "motivationalMessage", "createdAt"
+      ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Live computer class announcements or general notifications published by admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Auto generated document ID" },
+        "title": { "type": "string", "description": "Notification custom subject line heading" },
+        "message": { "type": "string", "description": "Body description informative announcement" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Publish timestamp" }
+      },
+      "required": ["id", "title", "message", "createdAt"]
+    },
+    "LiveClass": {
+      "title": "LiveClass",
+      "description": "Active live class links or streaming info set up by the administrative head",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique key matching active live schedules" },
+        "title": { "type": "string", "description": "Topic or title of the electronic class" },
+        "videoUrl": { "type": "string", "description": "Professional video wrapper stream/link" },
+        "isActive": { "type": "boolean", "description": "Whether class is currently live to enter" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Live class creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Live class modification timestamp" }
+      },
+      "required": ["id", "title", "videoUrl", "isActive", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Core users list with customized profile specifications"
+    },
+    "/tests/{testId}": {
+      "schema": "Test",
+      "description": "CCC computer institute Mock Series list"
+    },
+    "/tests/{testId}/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Subcollection holding questions specifically mapped under each individual test template"
+    },
+    "/results/{resultId}": {
+      "schema": "Result",
+      "description": "Performance history list with analytics records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Public system announcements published to student centers"
+    },
+    "/live_classes/{liveClassId}": {
+      "schema": "LiveClass",
+      "description": "Current virtual classrooms links configuration"
+    }
+  }
+}

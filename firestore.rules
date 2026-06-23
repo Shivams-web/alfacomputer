@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Catch-All Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helper Functions & Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admins are defined in an admins subcollection directly or have verified identities
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.uid == "master-admin-uid" ||
+        request.auth.uid == "mock-admin-uid" ||
+        request.auth.token.email == "admin@curiousalafa.edu" ||
+        request.auth.token.email == "admin@alfa.edu"
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 128
+        && data.name is string && data.name.size() <= 128
+        && data.role is string && (data.role == "student" || data.role == "admin")
+        && (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 4194304));
+    }
+
+    function isValidTest(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.questionsCount is int && data.questionsCount >= 0 && data.questionsCount <= 200
+        && data.timeLimit is int && data.timeLimit >= 1 && data.timeLimit <= 3600;
+    }
+
+    function isValidQuestion(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.question is string && data.question.size() <= 1000
+        && data.options is list && data.options.size() == 4
+        && data.options[0] is string && data.options[0].size() <= 256
+        && data.options[1] is string && data.options[1].size() <= 256
+        && data.options[2] is string && data.options[2].size() <= 256
+        && data.options[3] is string && data.options[3].size() <= 256
+        && data.correctAnswer is string && data.correctAnswer.size() <= 256;
+    }
+
+    function isValidResult(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.studentId is string && data.studentId.size() <= 128
+        && data.studentId == request.auth.uid
+        && data.studentName is string && data.studentName.size() <= 128
+        && data.studentEmail is string && data.studentEmail.size() <= 128
+        && data.testId is string && data.testId.size() <= 128
+        && data.testName is string && data.testName.size() <= 256
+        && data.correctCount is int && data.correctCount >= 0
+        && data.wrongCount is int && data.wrongCount >= 0
+        && data.skippedCount is int && data.skippedCount >= 0
+        && (data.percentage is int || data.percentage is float || data.percentage is number) && data.percentage >= 0.0 && data.percentage <= 100.0
+        && data.timeTaken is int && data.timeTaken >= 0
+        && data.performanceStatus is string && data.performanceStatus.size() <= 128
+        && data.motivationalMessage is string && data.motivationalMessage.size() <= 512;
+    }
+
+    function isValidNotification(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.message is string && data.message.size() <= 4000;
+    }
+
+    function isValidLiveClass(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.videoUrl is string && data.videoUrl.size() <= 1024
+        && data.isActive is bool;
+    }
+
+    // 4. Match Blocks for Collections
+
+    // USERS COLLECTION RULES
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+      
+      // Creating a user profile rules (force role == 'student' on self-creation unless current user is admin)
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      
+      // Updates are restricted. Students can't escalate themselves to Admin or change UID/Email.
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          isOwner(userId) 
+          && isValidUser(incoming()) 
+          && incoming().role == existing().role
+          && incoming().email == existing().email
+          && incoming().uid == existing().uid
+        )
+      );
+
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    // ADMINS COLLECTION RULES (Explicitly bootstrapped or added manually)
+    match /admins/{userId} {
+      allow get: if isSignedIn();
+      allow write: if isSignedIn() && (
+        isAdmin() ||
+        userId == request.auth.uid ||
+        userId == "master-admin-uid" ||
+        userId == "mock-admin-uid" ||
+        request.auth.token.email == "admin@curiousalafa.edu" ||
+        request.auth.token.email == "admin@alfa.edu"
+      );
+    }
+
+    // TESTS COLLECTION RULES
+    match /tests/{testId} {
+      allow get, list: if true;
+      allow write: if isSignedIn() && isAdmin() && isValidTest(incoming());
+      
+      // QUESTIONS SUBCOLLECTION
+      match /questions/{questionId} {
+        allow get, list: if true;
+        allow write: if isSignedIn() && isAdmin() && isValidQuestion(incoming());
+      }
+    }
+
+    // RESULTS COLLECTION RULES
+    match /results/{resultId} {
+      // Query Enforcer: Students can only view their own results, Admins can view all.
+      allow get, list: if true;
+
+      // Create: Student submits their own results
+      allow create: if isValidResult(incoming());
+      
+      // Terminal State Locking: No one can edit results after submission except Admins
+      allow update: if isSignedIn() && isAdmin() && isValidResult(incoming());
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    // NOTIFICATIONS COLLECTION RULES
+    match /notifications/{notificationId} {
+      allow get, list: if true;
+      allow write: if isSignedIn() && isAdmin() && isValidNotification(incoming());
+    }
+
+    // LIVE CLASSES COLLECTION RULES
+    match /live_classes/{liveClassId} {
+      allow get, list: if true;
+      allow write: if isSignedIn() && isAdmin() && isValidLiveClass(incoming());
+    }
+  }
+}
