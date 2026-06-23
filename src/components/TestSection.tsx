@@ -137,7 +137,7 @@ export default function TestSection({ user, onTestSubmit, onNavigateToResults }:
   // Core navigation selector
   const handleNextQuestion = (forcedSkipByTimer: boolean) => {
     if (forcedSkipByTimer) {
-      setSkippedCount(prev => prev + 1);
+      setSkippedCount(prev => prev + 0);     //my editing
     }
 
     if (timerRef.current) clearInterval(timerRef.current);
